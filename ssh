@@ -1,0 +1,36 @@
+# Prompt for NAS IP address and username
+read -p "Enter the NAS IP address: " NAS_IP_ADDRESS
+read -p "Enter the NAS username: " NAS_USERNAME
+
+# Define the path to your SSH keys on the NAS
+REMOTE_SSH_DIR="/home/$NAS_USERNAME/.ssh/"  # Adjusting the path based on NAS username
+LOCAL_SSH_DIR="$HOME/.ssh"
+PRIVATE_KEY_FILE="id_rsa"  # Adjust if your private key has a different name
+PUBLIC_KEY_FILE="id_rsa.pub"  # Adjust if your public key has a different name
+
+# Ensure the local .ssh directory exists
+mkdir -p "$LOCAL_SSH_DIR"
+
+# Copy SSH keys from NAS using scp
+echo "Transferring SSH keys from NAS..."
+scp "$NAS_USERNAME@$NAS_IP_ADDRESS:$REMOTE_SSH_DIR$PRIVATE_KEY_FILE" "$LOCAL_SSH_DIR/"
+scp "$NAS_USERNAME@$NAS_IP_ADDRESS:$REMOTE_SSH_DIR$PUBLIC_KEY_FILE" "$LOCAL_SSH_DIR/"
+
+# Set appropriate permissions
+chmod 600 "$LOCAL_SSH_DIR/$PRIVATE_KEY_FILE"
+chmod 644 "$LOCAL_SSH_DIR/$PUBLIC_KEY_FILE"
+
+# Optionally, add public key to authorized_keys if needed
+if [ ! -f "$LOCAL_SSH_DIR/authorized_keys" ]; then
+    touch "$LOCAL_SSH_DIR/authorized_keys"
+fi
+
+if ! grep -q "$(cat "$LOCAL_SSH_DIR/$PUBLIC_KEY_FILE")" "$LOCAL_SSH_DIR/authorized_keys"; then
+    echo "Adding public key to authorized_keys..."
+    cat "$LOCAL_SSH_DIR/$PUBLIC_KEY_FILE" >> "$LOCAL_SSH_DIR/authorized_keys"
+fi
+
+# Set permissions for authorized_keys
+chmod 600 "$LOCAL_SSH_DIR/authorized_keys"
+
+echo "SSH key setup completed successfully."
